@@ -1,3 +1,4 @@
+import sys
 import torch
 import numpy as np
 import pandas as pd
@@ -12,20 +13,28 @@ from gru_ode import Logger
 
 def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, test_idx, epoch_max=40, binned60 = False):
     
+    dir_path = "D:/mimic_iii/clean_data"
+
     if binned60:
-        csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC60.csv"
-        csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags60.csv"
+        ##csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC60.csv"
+        ##csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags60.csv"
+        csv_file_path = dir_path+"GRU_ODE_Dataset.csv"
+        csv_file_tags = dir_path+"GRU_ODE_death_tags.csv"
+        
     else:
-        csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC.csv"
-        csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags.csv"
+        ##csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC.csv"
+        ##csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags.csv"
+        print("Todo: make simplified Dataset")
+        sys.exit()
     
     if params_dict["no_cov"]:
         csv_file_cov = None
     else:
         if binned60:
-            csv_file_cov = "../../Datasets/MIMIC/MIMIC_covs60.csv"
+            #csv_file_cov = "../../Datasets/MIMIC/MIMIC_covs60.csv"
+            csv_file_cov = "GRU_ODE_coariates.csv"
         else:
-            csv_file_cov  = "../../Datasets/MIMIC/MIMIC_covs.csv"
+            #csv_file_cov  = "../../Datasets/MIMIC/MIMIC_covs.csv"
 
     N = pd.read_csv(csv_file_tags)["ID"].nunique()
 
@@ -260,7 +269,7 @@ if __name__ =="__main__":
 
     simulation_name="MIMIC_60_bins"
     device = torch.device("cuda")
-
+    dir_path = "D:/mimic_iii/clean_data "
 
     train_idx = np.load("../../Datasets/MIMIC/fold_idx_0/train_idx.npy")
     val_idx = np.load("../../Datasets/MIMIC/fold_idx_0/val_idx.npy")
