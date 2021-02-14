@@ -1,55 +1,61 @@
+import os
 import sys
 import torch
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
-import gru_ode
-import gru_ode.data_utils as data_utils
+import gru_ode_bayes
+import gru_ode_bayes.data_utils as data_utils
 import time
 import tqdm
 from sklearn.metrics import roc_auc_score
-from gru_ode import Logger
+from gru_ode_bayes import Logger
 
 def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, test_idx, epoch_max=40, binned60 = False):
     
-    dir_path = "D:/mimic_iii/clean_data"
+    dir_path = r"D:/mimic_iii/clean_data/"
 
     if binned60:
         ##csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC60.csv"
         ##csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags60.csv"
-        csv_file_path = dir_path+"GRU_ODE_Dataset.csv"
-        csv_file_tags = dir_path+"GRU_ODE_death_tags.csv"
+        csv_file_path = dir_path+r"GRU_ODE_Dataset.csv"
+        csv_file_tags = dir_path+r"GRU_ODE_death_tags.csv"
         
     else:
         ##csv_file_path = "../../Datasets/MIMIC/Processed_MIMIC.csv"
         ##csv_file_tags = "../../Datasets/MIMIC/MIMIC_tags.csv"
-        print("Todo: make simplified Dataset")
-        sys.exit()
+        #print("Todo: make simplified Dataset")
+        #sys.exit()
+        csv_file_path = dir_path+r"GRU_ODE_Dataset.csv"
+        csv_file_tags = dir_path+r"GRU_ODE_death_tags.csv"
+        
     
     if params_dict["no_cov"]:
         csv_file_cov = None
     else:
         if binned60:
             #csv_file_cov = "../../Datasets/MIMIC/MIMIC_covs60.csv"
-            csv_file_cov = "GRU_ODE_coariates.csv"
+            csv_file_cov = dir_path+r"GRU_ODE_covariates.csv"
         else:
             #csv_file_cov  = "../../Datasets/MIMIC/MIMIC_covs.csv"
-
+            csv_file_cov = dir_path+r"GRU_ODE_covariates.csv"
+    
     N = pd.read_csv(csv_file_tags)["ID"].nunique()
 
-
     if params_dict["lambda"]==0:
-        validation = True
+        validation = True 
         val_options = {"T_val": 75, "max_val_samples": 3}
     else:
         validation = False
         val_options = None
 
     if params_dict["lambda"]==0:
-        logger = Logger(f'../../Logs/Regression/{simulation_name}')
+        #logger = Logger(f'../../Logs/Regression/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Regression/{simulation_name}')
     else:
-        logger = Logger(f'../../Logs/Classification/{simulation_name}')
+        #logger = Logger(f'../../Logs/Classification/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Classification/{simulation_name}')
 
 
     data_train = data_utils.ODE_Dataset(csv_file=csv_file_path,label_file=csv_file_tags, cov_file= csv_file_cov, idx=train_idx)
@@ -67,9 +73,14 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
     params_dict["input_size"]=data_train.variable_num
     params_dict["cov_size"] = data_train.cov_dim
 
-    np.save(f"../../trained_models/{simulation_name}_params.npy",params_dict)
+    model_dir = dir_path+"trained_models/"
 
-    nnfwobj = gru_ode.NNFOwithBayesianJumps(input_size = params_dict["input_size"], hidden_size = params_dict["hidden_size"],
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+
+    np.save(model_dir+f"/{simulation_name}_params.npy",params_dict)
+
+    nnfwobj = gru_ode_bayes.NNFOwithBayesianJumps(input_size = params_dict["input_size"], hidden_size = params_dict["hidden_size"],
                                             p_hidden = params_dict["p_hidden"], prep_hidden = params_dict["prep_hidden"],
                                             logvar = params_dict["logvar"], mixing = params_dict["mixing"],
                                             classification_hidden=params_dict["classification_hidden"],
@@ -98,7 +109,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
             batch_size = labels.size(0)
 
             h0 = 0# torch.zeros(labels.shape[0], params_dict["hidden_size"]).to(device)
-            hT, loss, class_pred, _  = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov = cov)
+            hT, loss, class_pred, loss_pre, loss_post  = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov = cov)
 
             total_loss = (loss + params_dict["lambda"]*class_criterion(class_pred, labels))/batch_size
             total_train_loss += total_loss
@@ -143,7 +154,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
                     times_idx = b["index_val"]
 
                 h0 = 0 #torch.zeros(labels.shape[0], params_dict["hidden_size"]).to(device)
-                hT, loss, class_pred, t_vec, p_vec, h_vec, _ , _ = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
+                hT, loss, class_pred, t_vec, p_vec, h_vec, _ , _ , _ , _ = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
                 total_loss = (loss + params_dict["lambda"]*class_criterion(class_pred, labels))/batch_size
 
                 try:
@@ -187,7 +198,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
             if val_metric > val_metric_prev:
                 print(f"New highest validation metric reached ! : {val_metric}")
                 print("Saving Model")
-                torch.save(nnfwobj.state_dict(),f"../../trained_models/{simulation_name}_MAX.pt")
+                torch.save(nnfwobj.state_dict(),dir_path+f"trained_models/{simulation_name}_MAX.pt")
                 val_metric_prev = val_metric
                 test_loglik, test_auc, test_mse = test_evaluation(nnfwobj, params_dict, class_criterion, device, dl_test)
                 print(f"Test loglik loss at epoch {epoch} : {test_loglik}")
@@ -231,7 +242,7 @@ def test_evaluation(model, params_dict, class_criterion, device, dl_test):
                 times_idx = b["index_val"]
 
             h0 = 0 #torch.zeros(labels.shape[0], params_dict["hidden_size"]).to(device)
-            hT, loss, class_pred, t_vec, p_vec, h_vec, _, _  = model(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
+            hT, loss, class_pred, t_vec, p_vec, h_vec, _ , _ , _ , _ = model(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
             total_loss = (loss + params_dict["lambda"]*class_criterion(class_pred, labels))/batch_size
 
             try:

@@ -75,18 +75,22 @@ class ODE_Dataset(Dataset):
             self.label_df  = label_df
         else:
             assert (csv_file is not None) , "At least one feeding option required !"
-            self.df = pd.read_csv(root_dir + "/" + csv_file)
+            #self.df = pd.read_csv(root_dir + "/" + csv_file)
+            ## convert to absolute path 
+            self.df = pd.read_csv(csv_file)
             assert self.df.columns[0]=="ID"
             if label_file is None:
                 self.label_df = None
             else:
-                self.label_df = pd.read_csv(root_dir + "/" + label_file)
+                #self.label_df = pd.read_csv(root_dir + "/" + label_file)
+                self.label_df = pd.read_csv(label_file)
                 assert self.label_df.columns[0]=="ID"
                 assert self.label_df.columns[1]=="label"
             if cov_file is None :
                 self.cov_df = None
             else:
-                self.cov_df = pd.read_csv(root_dir + "/" + cov_file)
+                #self.cov_df = pd.read_csv(root_dir + "/" + cov_file)
+                self.cov_df = pd.read_csv(cov_file)
                 assert self.cov_df.columns[0]=="ID"
 
         #Create Dummy covariates and labels if they are not fed.

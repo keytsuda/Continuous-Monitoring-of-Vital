@@ -26,7 +26,7 @@ for t_idx, v_idx in kf.split(tar_idx):
     
     np.save(fold_dir+"train_idx.npy",train_idx)
     np.save(fold_dir+"val_idx.npy",val_idx)
-    np.save(fold_dir+"val_idx.npy",val_idx)
+    np.save(fold_dir+"test_idx.npy",test_idx)
     
     i += 1
 

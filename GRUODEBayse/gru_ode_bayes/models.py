@@ -174,6 +174,7 @@ class GRUObservationCellLogvar(torch.nn.Module):
 
     def forward(self, h, p, X_obs, M_obs, i_obs):
         ## only updating rows that have observations
+        i_obs=i_obs.long() # tensors used as indices must be long, byte or bool tensors
         p_obs        = p[i_obs]
 
         mean, logvar = torch.chunk(p_obs, 2, dim=1)
@@ -422,6 +423,8 @@ class NNFOwithBayesianJumps(torch.nn.Module):
             loss_1    = loss_1+ losses.sum()
             p         = self.p_model(h)
 
+            i_obs=i_obs.long() # tensors used as indices must be long, byte or bool tensors
+
             loss_2 = loss_2 + compute_KL_loss(p_obs = p[i_obs], X_obs = X_obs, M_obs = M_obs, logvar=self.logvar)
 
             if return_path:
@@ -456,14 +459,14 @@ class NNFOwithBayesianJumps(torch.nn.Module):
        
         if return_path:
             if smoother:
-                return h, loss, class_pred, np.array(path_t), torch.stack(path_p), torch.stack(path_h), class_loss_vec
+                return h, loss, class_pred, np.array(path_t), torch.stack(path_p), torch.stack(path_h), class_loss_vec, loss_1, loss_2
             else:
-                return h, loss, class_pred, np.array(path_t), torch.stack(path_p), torch.stack(path_h), eval_times_total, eval_vals_total
+                return h, loss, class_pred, np.array(path_t), torch.stack(path_p), torch.stack(path_h), eval_times_total, eval_vals_total, loss_1, loss_2
         else:
             if smoother:
-                return h, loss, class_pred, class_loss_vec
+                return h, loss, class_pred, class_loss_vec, loss_1, loss_2
             else:
-                return h, loss, class_pred, loss_1
+                return h, loss, class_pred, loss_1, loss_2
 
 def compute_KL_loss(p_obs, X_obs, M_obs, obs_noise_std=1e-2, logvar=True):
     obs_noise_std = torch.tensor(obs_noise_std)
