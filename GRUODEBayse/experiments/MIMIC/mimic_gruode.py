@@ -52,10 +52,10 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
 
     if params_dict["lambda"]==0:
         #logger = Logger(f'../../Logs/Regression/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Regression/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Regression/{simulation_name}')
     else:
         #logger = Logger(f'../../Logs/Classification/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Classification/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Classification/{simulation_name}')
 
 
     data_train = data_utils.ODE_Dataset(csv_file=csv_file_path,label_file=csv_file_tags, cov_file= csv_file_cov, idx=train_idx)
@@ -66,9 +66,9 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
                                         cov_file= csv_file_cov, idx=test_idx, validation = validation,
                                         val_options = val_options)
 
-    dl   = DataLoader(dataset=data_train, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=500,num_workers=5)
-    dl_val = DataLoader(dataset=data_val, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=500)
-    dl_test = DataLoader(dataset=data_test, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=500)#len(test_idx))
+    dl   = DataLoader(dataset=data_train, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=250,num_workers=5)
+    dl_val = DataLoader(dataset=data_val, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=250)
+    dl_test = DataLoader(dataset=data_test, collate_fn=data_utils.custom_collate_fn, shuffle=True, batch_size=250)#len(test_idx))
 
     params_dict["input_size"]=data_train.variable_num
     params_dict["cov_size"] = data_train.cov_dim
@@ -136,6 +136,8 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
             loss_val = 0
             mse_val  = 0
             corr_val = 0
+            pre_jump_loss = 0
+            post_jump_loss = 0
             num_obs = 0
             for i, b in enumerate(dl_val):
                 times    = b["times"]
@@ -154,7 +156,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
                     times_idx = b["index_val"]
 
                 h0 = 0 #torch.zeros(labels.shape[0], params_dict["hidden_size"]).to(device)
-                hT, loss, class_pred, t_vec, p_vec, h_vec, _ , _ , _ , _ = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
+                hT, loss, class_pred, t_vec, p_vec, h_vec, _ , _ , loss1, loss2 = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov=cov, return_path=True)
                 total_loss = (loss + params_dict["lambda"]*class_criterion(class_pred, labels))/batch_size
 
                 try:
@@ -179,6 +181,9 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
                 else:
                     num_obs=1
 
+                pre_jump_loss += loss1.cpu().detach().numpy()
+                post_jump_loss += loss2.cpu().detach().numpy()
+
                 total_loss_val += total_loss.cpu().detach().numpy()
                 auc_total_val += auc_val
 
@@ -186,7 +191,8 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
             mse_val /=  num_obs
             info = { 'validation_loss' : total_loss_val/(i+1), 'AUC_validation' : auc_total_val/(i+1),
                      'loglik_loss' : loss_val, 'validation_mse' : mse_val, 'correlation_mean' : np.nanmean(corr_val),
-                    'correlation_max': np.nanmax(corr_val), 'correlation_min': np.nanmin(corr_val)}
+                    'correlation_max': np.nanmax(corr_val), 'correlation_min': np.nanmin(corr_val),
+                    'pre_jump_loss':pre_jump_loss/(i+1),'post_jump_loss':post_jump_loss/(i+1)}
             for tag, value in info.items():
                 logger.scalar_summary(tag, value, epoch)
 
@@ -206,13 +212,13 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
                 print(f"Test MSE loss at epoch{epoch} : {test_mse}")
             else:
                 if epoch % 10:
-                    torch.save(nnfwobj.state_dict(),f"../../trained_models/{simulation_name}.pt")
+                    torch.save(nnfwobj.state_dict(),dir_path+f"trained_models/{simulation_name}.pt")
 
         print(f"Total validation loss at epoch {epoch}: {total_loss_val/(i+1)}")
         print(f"Validation AUC at epoch {epoch}: {auc_total_val/(i+1)}")
         print(f"Validation loss (loglik) at epoch {epoch}: {loss_val:.5f}. MSE : {mse_val:.5f}. Correlation : {np.nanmean(corr_val):.5f}. Num obs = {num_obs}")
 
-    print(f"Finished training GRU-ODE for MIMIC. Saved in ../../trained_models/{simulation_name}")
+    print(f"Finished training GRU-ODE for MIMIC. Saved in /trained_models/{simulation_name}")
 
     return(info, val_metric_prev, test_loglik, test_auc, test_mse)
 

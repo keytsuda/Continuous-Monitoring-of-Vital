@@ -6,6 +6,7 @@ import torch
 from mimic_gruode import train_gruode_mimic
 import argparse
 import os
+import tensorflow as tf
 
 parser = argparse.ArgumentParser(description="Running Cross validation on Neural ODE")
 parser.add_argument('--fold_number', type=int, help="Model to use", default=0)
@@ -21,7 +22,7 @@ else:
 
 
 #hyper_dict = np.load("../../hyper_dict.npy",allow_pickle = True).item()
-hyper_dict = {"dropout_rate": [0,0.1,0.5], "weight_decay":[0.0001], "lambda":[0,1]}
+hyper_dict = {"dropout_rate": [0.2,0.3], "weight_decay":[0.0001], "lambda":[0,1]}
 
 if type=="LogLik":
     hyper_dict["lambda"] = [0]
