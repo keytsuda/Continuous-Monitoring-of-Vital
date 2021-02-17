@@ -22,11 +22,11 @@ else:
 
 
 #hyper_dict = np.load("../../hyper_dict.npy",allow_pickle = True).item()
-hyper_dict = {"dropout_rate": [0,0.1,0.2,0.3], "weight_decay":[0.0001], "lambda":[0,1]}
+hyper_dict = {"dropout_rate": [0.2,0.3], "weight_decay":[0.0001], "lambda":[0,1]}
 
 if type=="LogLik":
     hyper_dict["lambda"] = [0]
-epoch_max = 50
+epoch_max = 100
 
 
 keys = hyper_dict.keys()
@@ -49,7 +49,7 @@ def main():
         weight_decay = c["weight_decay"]
         lambda_factor = c["lambda"]
 
-        simulation_name = f"Xval_{type}_GRU_ODE_MIMIC_Binned2_NoImpute_dropout{dropout_rate}_weightdecay{weight_decay}_lambda{lambda_factor}_fold{fold}"
+        simulation_name = f"Xval_{type}_GRU_ODE_VAE_MIMIC_Binned2_NoImpute_dropout{dropout_rate}_weightdecay{weight_decay}_lambda{lambda_factor}_fold{fold}"
 
         device = torch.device("cuda")
 
@@ -58,7 +58,8 @@ def main():
         params_dict["p_hidden"] = 25
         params_dict["prep_hidden"] = 10
         params_dict["logvar"] = True
-        params_dict["mixing"] = 1e-4 #Weighting between KL loss and MSE loss.
+        params_dict["mixing_obs"] = 1e-4 #Weighting between observational KL loss and MSE loss.
+        params_dict["mixing_latent"] = 1e-4 #Weighting between latent h KL loss and MSE loss.
         params_dict["delta_t"]=0.1
         params_dict["T"]=100
 

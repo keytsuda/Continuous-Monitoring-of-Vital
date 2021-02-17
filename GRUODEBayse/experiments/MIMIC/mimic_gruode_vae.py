@@ -52,10 +52,10 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
 
     if params_dict["lambda"]==0:
         #logger = Logger(f'../../Logs/Regression/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Logs/gru_ode_bayse/Regression/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Regression/{simulation_name}')
     else:
         #logger = Logger(f'../../Logs/Classification/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Logs/gru_ode_bayse/Classification/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Classification/{simulation_name}')
 
 
     data_train = data_utils.ODE_Dataset(csv_file=csv_file_path,label_file=csv_file_tags, cov_file= csv_file_cov, idx=train_idx)
@@ -82,7 +82,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
 
     nnfwobj = gru_ode_bayes.NNFOwithBayesianJumps(input_size = params_dict["input_size"], hidden_size = params_dict["hidden_size"],
                                             p_hidden = params_dict["p_hidden"], prep_hidden = params_dict["prep_hidden"],
-                                            logvar = params_dict["logvar"], mixing = params_dict["mixing"],
+                                            logvar = params_dict["logvar"], mixing = params_dict["mixing_obs"],
                                             classification_hidden=params_dict["classification_hidden"],
                                             cov_size = params_dict["cov_size"], cov_hidden = params_dict["cov_hidden"],
                                             dropout_rate = params_dict["dropout_rate"],full_gru_ode= params_dict["full_gru_ode"], impute = params_dict["impute"])
@@ -298,7 +298,8 @@ if __name__ =="__main__":
     params_dict["p_hidden"] = 25
     params_dict["prep_hidden"] = 10
     params_dict["logvar"] = True
-    params_dict["mixing"] = 1e-4 #Weighting between KL loss and MSE loss.
+    params_dict["mixing_obs"] = 1e-4 #Weighting between observational KL loss and MSE loss.
+    params_dict["mixing_latent"] = 1e-4 #Weighting between latent h KL loss and MSE loss.
     params_dict["delta_t"]=0.1
     params_dict["T"]=100
     params_dict["lambda"] = 0 #Weighting between classification and MSE loss.
