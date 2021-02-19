@@ -22,7 +22,7 @@ else:
 
 
 #hyper_dict = np.load("../../hyper_dict.npy",allow_pickle = True).item()
-hyper_dict = {"dropout_rate": [0,0.1,0.2,0.3], "weight_decay":[0.0001], "lambda":[0,1]}
+hyper_dict = {"dropout_rate": [0,0.1,0.2], "weight_decay":[0.0001], "lambda":[0,1]}
 
 if type=="LogLik":
     hyper_dict["lambda"] = [0]
@@ -34,6 +34,7 @@ values = (hyper_dict[key] for key in keys)
 combinations = [dict(zip(keys, combination)) for combination in itertools.product(*values)]
 
 results_df = pd.DataFrame(columns = ["fold_num","dropout_rate","weight_decay","lambda","last_val_metric","best_val_metric","test_loglik","test_auc"])
+
 
 dir_path = r"D:/mimic_iii/clean_data/"
 train_idx = np.load(dir_path+f"fold_idx_{fold}/train_idx.npy")
