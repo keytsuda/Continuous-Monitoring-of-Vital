@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import torch
 from mimic_gruode import train_gruode_mimic
+from mimic_gruode_vae import train_gruode_vae_mimic
 import argparse
 import os
 import tensorflow as tf
@@ -22,7 +23,7 @@ else:
 
 
 #hyper_dict = np.load("../../hyper_dict.npy",allow_pickle = True).item()
-hyper_dict = {"dropout_rate": [0.2,0.3], "weight_decay":[0.0001], "lambda":[0,1]}
+hyper_dict = {"dropout_rate": [0.2], "weight_decay":[0.0001], "lambda":[0,0.1,1]}
 
 if type=="LogLik":
     hyper_dict["lambda"] = [0]
@@ -74,7 +75,7 @@ def main():
         params_dict["weight_decay"] = weight_decay
         params_dict["impute"] = False
 
-        last_val_results, max_val_metric, test_loglik, test_auc, test_mse =train_gruode_mimic(simulation_name = simulation_name,
+        last_val_results, max_val_metric, test_loglik, test_auc, test_mse =train_gruode_vae_mimic(simulation_name = simulation_name,
                                                                 params_dict = params_dict,
                                                                 device = device,
                                                                 train_idx = train_idx,
