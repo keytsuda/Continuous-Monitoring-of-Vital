@@ -12,7 +12,7 @@ import tqdm
 from sklearn.metrics import roc_auc_score
 from gru_ode_bayes import Logger
 
-def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, test_idx, epoch_max=40, binned60 = False):
+def train_gruode_KLanneal_mimic(simulation_name, params_dict,device, train_idx, val_idx, test_idx, epoch_max=50, binned60 = False):
     
     dir_path = r"D:/mimic_iii/clean_data/"
 
@@ -52,10 +52,10 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
 
     if params_dict["lambda"]==0:
         #logger = Logger(f'../../Logs/Regression/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Regression/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/KL_annealing/Regression/{simulation_name}')
     else:
         #logger = Logger(f'../../Logs/Classification/{simulation_name}')
-        logger = Logger(f'D:/mimic_iii/clean_data/Logs/Classification/{simulation_name}')
+        logger = Logger(f'D:/mimic_iii/clean_data/Logs/KL_annealing/Classification/{simulation_name}')
 
 
     data_train = data_utils.ODE_Dataset(csv_file=csv_file_path,label_file=csv_file_tags, cov_file= csv_file_cov, idx=train_idx)
@@ -92,6 +92,7 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
     class_criterion = torch.nn.BCEWithLogitsLoss(reduction='sum')
     print("Start Training")
     val_metric_prev = -1000
+
     for epoch in range(epoch_max):
         nnfwobj.train()
         total_train_loss = 0
@@ -109,7 +110,24 @@ def train_gruode_mimic(simulation_name, params_dict,device, train_idx, val_idx, 
             batch_size = labels.size(0)
 
             h0 = 0# torch.zeros(labels.shape[0], params_dict["hidden_size"]).to(device)
-            hT, loss, class_pred, loss_pre, loss_post  = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov = cov)
+
+            ## annealer design
+            if params_dict["annealer"] == "Linear":
+                epoch_rate = epoch/epoch_max
+            elif params_dict["annealer"] == "Warmup":
+                if epoch_max < 20:
+                    print("Epoch_max is too little! Annealer is ignored")
+                else:
+                    if epoch<11:
+                        epoch_rate=0
+                    else:
+                        epoch_rate=(epoch-10)/(epoch_max-10)
+            elif params_dict["annealer"] == "Cyclical":
+                epoch_rate = ((epoch+1)%10)/10
+            else:
+                epoch_rate = 1
+
+            hT, loss, class_pred, loss_pre, loss_post  = nnfwobj(times, time_ptr, X, M, obs_idx, delta_t=params_dict["delta_t"], T=params_dict["T"], cov = cov, epoch_rate = epoch_rate)
 
             total_loss = (loss + params_dict["lambda"]*class_criterion(class_pred, labels))/batch_size
             total_train_loss += total_loss

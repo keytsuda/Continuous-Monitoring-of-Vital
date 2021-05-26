@@ -343,7 +343,7 @@ class NNFOwithBayesianJumps(torch.nn.Module):
         raise ValueError(f"Unknown solver '{self.solver}'.")
 
     def forward(self, times, time_ptr, X, M, obs_idx, delta_t, T, cov,
-                return_path=False, smoother = False, class_criterion = None, labels=None):
+                return_path=False, smoother = False, class_criterion = None, labels=None, epoch_rate=1):
         """
         Args:
             times      np vector of observation times
@@ -449,7 +449,7 @@ class NNFOwithBayesianJumps(torch.nn.Module):
                 path_p.append(p)
                 path_h.append(h)
 
-        loss = loss_1 + self.mixing * loss_2
+        loss = loss_1 + epoch_rate * self.mixing * loss_2
 
         if smoother:
             class_loss_vec += class_criterion(self.classification_model(h),labels).squeeze(1)
